@@ -1,0 +1,7 @@
+{
+  "port": 3030,
+  "db": {
+    "client": "pg",
+    "connection": "postgres://geodata:Nxf5!223@localhost:5432/db_geodata_service"
+  }
+}
