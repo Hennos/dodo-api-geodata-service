@@ -6,6 +6,7 @@ const config = require('config');
 const objection = require('./objection');
 
 const dataModels = require('./src/dataModels');
+const controllers = require('./src/controllers');
 
 const app = express();
 
@@ -19,5 +20,6 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
 dataModels(app);
+controllers(app);
 
 module.exports = app;

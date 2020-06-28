@@ -1,6 +1,6 @@
 const { Model } = require('objection');
 
-class Layers extends Model {
+class Layer extends Model {
   static get tableName() {
     return 'layers';
   }
@@ -17,12 +17,11 @@ class Layers extends Model {
   }
 
   static get relationMappings() {
-    const Objects = require('./objects.model')();
-
+    const Object = require('./object')();
     return {
       objects: {
         relation: Model.HasManyRelation,
-        modelClass: Objects,
+        modelClass: Object,
         join: {
           from: 'layers.id',
           to: 'objects.layerId',
@@ -41,7 +40,7 @@ class Layers extends Model {
 }
 
 module.exports = function (app) {
-  if (!app) return Layers;
+  if (!app) return Layer;
 
   const db = app.get('knex');
 
@@ -62,5 +61,5 @@ module.exports = function (app) {
     })
     .catch((e) => console.error('Error creating layers table', e)); // eslint-disable-line no-console
 
-  return Layers;
+  return Layer;
 };
