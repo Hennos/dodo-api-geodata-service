@@ -1,7 +1,10 @@
 const { Model } = require('objection');
 
 module.exports = function (app) {
-  const { client, connection } = app.get('postgres');
+  const {
+    db: { client, connection },
+  } = app.get('config');
+
   const knex = require('knex')({ client, connection, useNullAsDefault: false });
 
   Model.knex(knex);

@@ -1,12 +1,6 @@
 {
-  "host": "localhost",
   "port": 3030,
-  "public": "../public/",
-  "paginate": {
-    "default": 10,
-    "max": 50
-  },
-  "postgres": {
+  "db": {
     "client": "pg",
     "connection": "postgres://geodata:Nxf5!223@localhost:5432/db_geodata_service"
   }

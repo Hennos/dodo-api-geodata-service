@@ -1,8 +1,6 @@
-// See https://vincit.github.io/objection.js/#models
-// for more of what you can do here.
 const { Model } = require('objection');
 
-class Objects extends Model {
+class Object extends Model {
   static get tableName() {
     return 'objects';
   }
@@ -10,7 +8,7 @@ class Objects extends Model {
   static get jsonSchema() {
     return {
       type: 'object',
-      required: ['data', 'layerId'],
+      required: ['data'],
 
       properties: {
         data: { type: 'object' },
@@ -29,7 +27,7 @@ class Objects extends Model {
 }
 
 module.exports = function (app) {
-  if (!app) return Objects;
+  if (!app) return Object;
 
   const db = app.get('knex');
 
@@ -51,5 +49,5 @@ module.exports = function (app) {
     })
     .catch((e) => console.error('Error creating objects table', e)); // eslint-disable-line no-console
 
-  return Objects;
+  return Object;
 };
