@@ -7,6 +7,7 @@ const objection = require('./objection');
 
 const dataModels = require('./src/dataModels');
 const controllers = require('./src/controllers');
+const events = require('./src/events');
 
 const app = express();
 
@@ -21,5 +22,7 @@ app.use(cookieParser());
 
 dataModels(app);
 controllers(app);
+
+events(app);
 
 module.exports = app;
