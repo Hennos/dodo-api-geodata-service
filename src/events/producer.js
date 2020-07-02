@@ -1,5 +1,4 @@
 const amqp = require('amqplib');
-const { check } = require('prettier');
 
 module.exports = async function (app) {
   const {
