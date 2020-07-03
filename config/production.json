@@ -2,7 +2,7 @@
   "port": 15030,
   "db": {
     "client": "pg",
-    "connection": "postgres://geodata:Nxf5!223@db-geodata:5432/db_geodata_service"
+    "connection": "postgres://geodata:geodata@db-geodata:5432/db_geodata_service"
   },
   "amqp": {
     "connection": "amqp://rabbitmq"
