@@ -2,7 +2,7 @@
   "port": 3030,
   "db": {
     "client": "pg",
-    "connection": "postgres://geodata:geodata@localhost:5432/db_geodata_service"
+    "connection": "postgres://geodata:geodata@localhost/db_geodata_service"
   },
   "amqp": {
     "connection": "amqp://localhost"

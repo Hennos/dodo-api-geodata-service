@@ -2,9 +2,14 @@
   "port": 15030,
   "db": {
     "client": "pg",
-    "connection": "postgres://geodata:geodata@db-geodata:5432/db_geodata_service"
+    "connection": {
+      "host": "db-geodata",
+      "user": "geodata",
+      "password": "geodata",
+      "database": "db_geodata_service"
+    }
   },
   "amqp": {
-    "connection": "amqp://rabbitmq"
+    "connection": "amqp://admin:admin@rabbitmq"
   }
 }
