@@ -5,6 +5,6 @@
     "connection": "postgres://geodata:geodata@localhost/db_geodata_service"
   },
   "amqp": {
-    "connection": "amqp://localhost"
+    "connection": "amqp://admin:admin@localhost"
   }
 }
