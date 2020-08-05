@@ -56,6 +56,21 @@ module.exports = function (app) {
             table.timestamp('updatedAt');
           })
           .then(() => console.log('Created layers table')) // eslint-disable-line no-console
+          .then(() =>
+            db('layers').insert([
+              {
+                name: 'tables',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              },
+              {
+                name: 'robots',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              },
+            ]),
+          )
+          .then(() => console.log('Prepare layers data')) // eslint-disable-line no-console
           .catch((e) => console.error('Error creating layers table', e)); // eslint-disable-line no-console
       }
     })
