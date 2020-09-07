@@ -1,5 +1,11 @@
 const amqp = require('amqplib');
 
+function getTableDiagonal(coordinates) {
+  const [lt, _, rb, __] = coordinates[0];
+
+  return [lt, rb];
+}
+
 module.exports = async function (app) {
   const {
     amqp: { connection: url },
@@ -11,6 +17,7 @@ module.exports = async function (app) {
     CREATE_OBJECT: 'create_geodata_object',
     UPDATE_OBJECTS: 'update_geodata_objects',
     REMOVE_OBJECTS: 'remove_geodata_objects',
+    TABLE_CHANGED_NOTIFICATION: 'table_changed_notification',
   };
 
   const exchanges = {
@@ -95,15 +102,20 @@ module.exports = async function (app) {
           console.log(`create_geodata_object request`);
           const request = JSON.parse(message.content.toString());
           const result = await createObject(request.layerId, { data: request.created });
-          console.log(result);
+          console.log(`create object ${result.id}`);
 
-          const notification = JSON.stringify({
-            id: request.layerId,
-            action: updateActions.CREATE_OBJECT,
-            data: result,
-          });
-          channel.assertExchange(exchanges.UPDATED_LAYER, 'fanout', { durable: false });
-          channel.publish(exchanges.UPDATED_LAYER, '', Buffer.from(notification));
+          // const notification = JSON.stringify({
+          //   id: request.layerId,
+          //   action: updateActions.CREATE_OBJECT,
+          //   data: result,
+          // });
+          // channel.assertExchange(exchanges.UPDATED_LAYER, 'fanout', { durable: false });
+          // channel.publish(exchanges.UPDATED_LAYER, '', Buffer.from(notification));
+
+          const [lt, rb] = getTableDiagonal(result.data.geometry.coordinates);
+          const tablesNotification = `t:${result.id},a:create,x11:${lt[0]},x22:${rb[0]},y11:${lt[1]},y22:${rb[1]}`;
+          channel.assertQueue(queues.TABLE_CHANGED_NOTIFICATION, { durable: false });
+          channel.sendToQueue(queues.TABLE_CHANGED_NOTIFICATION, Buffer.from(tablesNotification));
 
           channel.ack(message);
         }
@@ -127,13 +139,20 @@ module.exports = async function (app) {
           const result = await updateObjects(request.layerId, request.updated);
           console.log(result);
 
-          const notification = JSON.stringify({
-            id: request.layerId,
-            action: updateActions.UPDATE_OBJECTS,
-            data: result,
+          // const notification = JSON.stringify({
+          //   id: request.layerId,
+          //   action: updateActions.UPDATE_OBJECTS,
+          //   data: result,
+          // });
+          // channel.assertExchange(exchanges.UPDATED_LAYER, 'fanout', { durable: false });
+          // channel.publish(exchanges.UPDATED_LAYER, '', Buffer.from(notification));
+
+          channel.assertQueue(queues.TABLE_CHANGED_NOTIFICATION, { durable: false });
+          result.forEach((updated) => {
+            const [lt, rb] = getTableDiagonal(updated.data.geometry.coordinates);
+            const tablesNotification = `t:${updated.id},a:update,x11:${lt[0]},x22:${rb[0]},y11:${lt[1]},y22:${rb[1]}`;
+            channel.sendToQueue(queues.TABLE_CHANGED_NOTIFICATION, Buffer.from(tablesNotification));
           });
-          channel.assertExchange(exchanges.UPDATED_LAYER, 'fanout', { durable: false });
-          channel.publish(exchanges.UPDATED_LAYER, '', Buffer.from(notification));
 
           channel.ack(message);
         }
@@ -157,13 +176,19 @@ module.exports = async function (app) {
           const result = await removeObjects(request.layerId, request.removed);
           console.log(result);
 
-          const notification = JSON.stringify({
-            id: request.layerId,
-            action: updateActions.REMOVE_OBJECTS,
-            data: result,
+          // const notification = JSON.stringify({
+          //   id: request.layerId,
+          //   action: updateActions.REMOVE_OBJECTS,
+          //   data: result,
+          // });
+          // channel.assertExchange(exchanges.UPDATED_LAYER, 'fanout', { durable: false });
+          // channel.publish(exchanges.UPDATED_LAYER, '', Buffer.from(notification));
+
+          channel.assertQueue(queues.TABLE_CHANGED_NOTIFICATION, { durable: false });
+          result.forEach((removed) => {
+            const tablesNotification = `t:${removed.id},a:remove`;
+            channel.sendToQueue(queues.TABLE_CHANGED_NOTIFICATION, Buffer.from(tablesNotification));
           });
-          channel.assertExchange(exchanges.UPDATED_LAYER, 'fanout', { durable: false });
-          channel.publish(exchanges.UPDATED_LAYER, '', Buffer.from(notification));
 
           channel.ack(message);
         }
