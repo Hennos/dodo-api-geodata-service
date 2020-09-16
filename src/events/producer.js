@@ -1,9 +1,23 @@
 const amqp = require('amqplib');
 
-function getTableDiagonal(coordinates) {
-  const [lt, _, rb, __] = coordinates[0];
+function getTableCenter(coordinates) {
+  let twoTimesSignedArea = 0;
+  let cxTimes6SignedArea = 0;
+  let cyTimes6SignedArea = 0;
 
-  return [lt, rb];
+  const length = coordinates.length;
+
+  const x = (i) => coordinates[i % length][0];
+  const y = (i) => coordinates[i % length][1];
+
+  for (let i = 0; i < length; i++) {
+    const twoSA = x(i) * y(i + 1) - x(i + 1) * y(i);
+    twoTimesSignedArea += twoSA;
+    cxTimes6SignedArea += (x(i) + x(i + 1)) * twoSA;
+    cyTimes6SignedArea += (y(i) + y(i + 1)) * twoSA;
+  }
+  const sixSignedArea = 3 * twoTimesSignedArea;
+  return [cxTimes6SignedArea / sixSignedArea, cyTimes6SignedArea / sixSignedArea];
 }
 
 module.exports = async function (app) {
@@ -17,7 +31,7 @@ module.exports = async function (app) {
     CREATE_OBJECT: 'create_geodata_object',
     UPDATE_OBJECTS: 'update_geodata_objects',
     REMOVE_OBJECTS: 'remove_geodata_objects',
-    TABLE_CHANGED_NOTIFICATION: 'table_changed_notification',
+    TABLE_CHANGED_NOTIFICATION: 'robot_delivery_order',
   };
 
   const exchanges = {
@@ -112,8 +126,9 @@ module.exports = async function (app) {
           // channel.assertExchange(exchanges.UPDATED_LAYER, 'fanout', { durable: false });
           // channel.publish(exchanges.UPDATED_LAYER, '', Buffer.from(notification));
 
-          const [lt, rb] = getTableDiagonal(result.data.geometry.coordinates);
-          const tablesNotification = `t:${result.id},a:create,x11:${lt[0]},x22:${rb[0]},y11:${lt[1]},y22:${rb[1]}`;
+          const tableCenter = getTableCenter(result.data.geometry.coordinates[0]);
+          console.log(`push table center at {${tableCenter[0]},${tableCenter[1]}}`);
+          const tablesNotification = `t:1,a:create,x:${tableCenter[0]},y:${tableCenter[1]}`;
           channel.assertQueue(queues.TABLE_CHANGED_NOTIFICATION, { durable: false });
           channel.sendToQueue(queues.TABLE_CHANGED_NOTIFICATION, Buffer.from(tablesNotification));
 
@@ -149,8 +164,9 @@ module.exports = async function (app) {
 
           channel.assertQueue(queues.TABLE_CHANGED_NOTIFICATION, { durable: false });
           result.forEach((updated) => {
-            const [lt, rb] = getTableDiagonal(updated.data.geometry.coordinates);
-            const tablesNotification = `t:${updated.id},a:update,x11:${lt[0]},x22:${rb[0]},y11:${lt[1]},y22:${rb[1]}`;
+            const tableCenter = getTableCenter(updated.data.geometry.coordinates[0]);
+            console.log(`push table center at {${tableCenter[0]},${tableCenter[0]}}`);
+            const tablesNotification = `t:1,a:update,x:${tableCenter[0]},y:${tableCenter[1]}`;
             channel.sendToQueue(queues.TABLE_CHANGED_NOTIFICATION, Buffer.from(tablesNotification));
           });
 
@@ -186,7 +202,7 @@ module.exports = async function (app) {
 
           channel.assertQueue(queues.TABLE_CHANGED_NOTIFICATION, { durable: false });
           result.forEach((removed) => {
-            const tablesNotification = `t:${removed.id},a:remove`;
+            const tablesNotification = `t:1,a:remove`;
             channel.sendToQueue(queues.TABLE_CHANGED_NOTIFICATION, Buffer.from(tablesNotification));
           });
 
