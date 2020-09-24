@@ -52,6 +52,11 @@ module.exports = async function (app) {
     removeObjectsHandler(connection);
   });
 
+  const anchorTables = [
+    { anchor: 1, savedTable: null },
+    { anchor: 2, savedTable: null },
+  ];
+
   function getLayerHandler(connection) {
     const { getLayer } = app.get('controllers');
     return connection
@@ -128,7 +133,14 @@ module.exports = async function (app) {
 
           const tableCenter = getTableCenter(result.data.geometry.coordinates[0]);
           console.log(`push table center at {${tableCenter[0]},${tableCenter[1]}}`);
-          const tablesNotification = `t:1,a:create,x:${tableCenter[0]},y:${tableCenter[1]}`;
+
+          let savedAnchor = anchorTables.find(({ savedTable }) => savedTable == null);
+          if (!savedAnchor) {
+            anchorTables.forEach((anchorTable) => (anchorTable.savedTable = null));
+            savedAnchor = anchorTables[0];
+          }
+          savedAnchor.savedTable = result.id;
+          const tablesNotification = `t:${savedAnchor.anchor},a:create,x:${tableCenter[0]},y:${tableCenter[1]}`;
           channel.assertQueue(queues.TABLE_CHANGED_NOTIFICATION, { durable: false });
           channel.sendToQueue(queues.TABLE_CHANGED_NOTIFICATION, Buffer.from(tablesNotification));
 
@@ -164,10 +176,16 @@ module.exports = async function (app) {
 
           channel.assertQueue(queues.TABLE_CHANGED_NOTIFICATION, { durable: false });
           result.forEach((updated) => {
-            const tableCenter = getTableCenter(updated.data.geometry.coordinates[0]);
-            console.log(`push table center at {${tableCenter[0]},${tableCenter[0]}}`);
-            const tablesNotification = `t:1,a:update,x:${tableCenter[0]},y:${tableCenter[1]}`;
-            channel.sendToQueue(queues.TABLE_CHANGED_NOTIFICATION, Buffer.from(tablesNotification));
+            const savedAnchor = anchorTables.find(({ savedTable }) => savedTable == updated.id);
+            if (savedAnchor) {
+              const tableCenter = getTableCenter(updated.data.geometry.coordinates[0]);
+              console.log(`push table center at {${tableCenter[0]},${tableCenter[0]}}`);
+              const tablesNotification = `t:${savedAnchor.anchor},a:update,x:${tableCenter[0]},y:${tableCenter[1]}`;
+              channel.sendToQueue(
+                queues.TABLE_CHANGED_NOTIFICATION,
+                Buffer.from(tablesNotification),
+              );
+            }
           });
 
           channel.ack(message);
@@ -202,8 +220,15 @@ module.exports = async function (app) {
 
           channel.assertQueue(queues.TABLE_CHANGED_NOTIFICATION, { durable: false });
           result.forEach((removed) => {
-            const tablesNotification = `t:1,a:remove`;
-            channel.sendToQueue(queues.TABLE_CHANGED_NOTIFICATION, Buffer.from(tablesNotification));
+            const savedAnchor = anchorTables.find(({ savedTable }) => savedTable == removed.id);
+            if (savedAnchor) {
+              savedAnchor.savedTable = null;
+              const tablesNotification = `t:${savedAnchor.anchor},a:remove`;
+              channel.sendToQueue(
+                queues.TABLE_CHANGED_NOTIFICATION,
+                Buffer.from(tablesNotification),
+              );
+            }
           });
 
           channel.ack(message);
