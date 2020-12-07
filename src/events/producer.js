@@ -52,11 +52,6 @@ module.exports = async function (app) {
     removeObjectsHandler(connection);
   });
 
-  const anchorTables = [
-    { anchor: 1, savedTable: null },
-    { anchor: 2, savedTable: null },
-  ];
-
   function getLayerHandler(connection) {
     const { getLayer } = app.get('controllers');
     return connection
@@ -123,24 +118,18 @@ module.exports = async function (app) {
           const result = await createObject(request.layerId, { data: request.created });
           console.log(`create object ${result.id}`);
 
-          // const notification = JSON.stringify({
-          //   id: request.layerId,
-          //   action: updateActions.CREATE_OBJECT,
-          //   data: result,
-          // });
-          // channel.assertExchange(exchanges.UPDATED_LAYER, 'fanout', { durable: false });
-          // channel.publish(exchanges.UPDATED_LAYER, '', Buffer.from(notification));
+          const notification = JSON.stringify({
+            id: request.layerId,
+            action: updateActions.CREATE_OBJECT,
+            data: result,
+          });
+          channel.assertExchange(exchanges.UPDATED_LAYER, 'fanout', { durable: false });
+          channel.publish(exchanges.UPDATED_LAYER, '', Buffer.from(notification));
 
           const tableCenter = getTableCenter(result.data.geometry.coordinates[0]);
           console.log(`push table center at {${tableCenter[0]},${tableCenter[1]}}`);
 
-          let savedAnchor = anchorTables.find(({ savedTable }) => savedTable == null);
-          if (!savedAnchor) {
-            anchorTables.forEach((anchorTable) => (anchorTable.savedTable = null));
-            savedAnchor = anchorTables[0];
-          }
-          savedAnchor.savedTable = result.id;
-          const tablesNotification = `t:${savedAnchor.anchor},a:create,x:${tableCenter[0]},y:${tableCenter[1]}`;
+          const tablesNotification = `t:${result.id},a:create,x:${tableCenter[0]},y:${tableCenter[1]}`;
           channel.assertQueue(queues.TABLE_CHANGED_NOTIFICATION, { durable: false });
           channel.sendToQueue(queues.TABLE_CHANGED_NOTIFICATION, Buffer.from(tablesNotification));
 
@@ -166,26 +155,20 @@ module.exports = async function (app) {
           const result = await updateObjects(request.layerId, request.updated);
           console.log(result);
 
-          // const notification = JSON.stringify({
-          //   id: request.layerId,
-          //   action: updateActions.UPDATE_OBJECTS,
-          //   data: result,
-          // });
-          // channel.assertExchange(exchanges.UPDATED_LAYER, 'fanout', { durable: false });
-          // channel.publish(exchanges.UPDATED_LAYER, '', Buffer.from(notification));
+          const notification = JSON.stringify({
+            id: request.layerId,
+            action: updateActions.UPDATE_OBJECTS,
+            data: result,
+          });
+          channel.assertExchange(exchanges.UPDATED_LAYER, 'fanout', { durable: false });
+          channel.publish(exchanges.UPDATED_LAYER, '', Buffer.from(notification));
 
           channel.assertQueue(queues.TABLE_CHANGED_NOTIFICATION, { durable: false });
           result.forEach((updated) => {
-            const savedAnchor = anchorTables.find(({ savedTable }) => savedTable == updated.id);
-            if (savedAnchor) {
-              const tableCenter = getTableCenter(updated.data.geometry.coordinates[0]);
-              console.log(`push table center at {${tableCenter[0]},${tableCenter[0]}}`);
-              const tablesNotification = `t:${savedAnchor.anchor},a:update,x:${tableCenter[0]},y:${tableCenter[1]}`;
-              channel.sendToQueue(
-                queues.TABLE_CHANGED_NOTIFICATION,
-                Buffer.from(tablesNotification),
-              );
-            }
+            const tableCenter = getTableCenter(updated.data.geometry.coordinates[0]);
+            console.log(`push table center at {${tableCenter[0]},${tableCenter[0]}}`);
+            const tablesNotification = `t:${updated.id},a:update,x:${tableCenter[0]},y:${tableCenter[1]}`;
+            channel.sendToQueue(queues.TABLE_CHANGED_NOTIFICATION, Buffer.from(tablesNotification));
           });
 
           channel.ack(message);
@@ -210,25 +193,18 @@ module.exports = async function (app) {
           const result = await removeObjects(request.layerId, request.removed);
           console.log(result);
 
-          // const notification = JSON.stringify({
-          //   id: request.layerId,
-          //   action: updateActions.REMOVE_OBJECTS,
-          //   data: result,
-          // });
-          // channel.assertExchange(exchanges.UPDATED_LAYER, 'fanout', { durable: false });
-          // channel.publish(exchanges.UPDATED_LAYER, '', Buffer.from(notification));
+          const notification = JSON.stringify({
+            id: request.layerId,
+            action: updateActions.REMOVE_OBJECTS,
+            data: result,
+          });
+          channel.assertExchange(exchanges.UPDATED_LAYER, 'fanout', { durable: false });
+          channel.publish(exchanges.UPDATED_LAYER, '', Buffer.from(notification));
 
           channel.assertQueue(queues.TABLE_CHANGED_NOTIFICATION, { durable: false });
           result.forEach((removed) => {
-            const savedAnchor = anchorTables.find(({ savedTable }) => savedTable == removed.id);
-            if (savedAnchor) {
-              savedAnchor.savedTable = null;
-              const tablesNotification = `t:${savedAnchor.anchor},a:remove`;
-              channel.sendToQueue(
-                queues.TABLE_CHANGED_NOTIFICATION,
-                Buffer.from(tablesNotification),
-              );
-            }
+            const tablesNotification = `t:${removed.id},a:remove`;
+            channel.sendToQueue(queues.TABLE_CHANGED_NOTIFICATION, Buffer.from(tablesNotification));
           });
 
           channel.ack(message);
